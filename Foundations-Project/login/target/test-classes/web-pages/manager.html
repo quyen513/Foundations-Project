@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+      <title>Manager Page</title>
+</head>
+<body>
+ <table> 
+    <tr>
+        <td>Username: </td>
+        <td id="username"></td>
+    </tr>
+    <tr>
+        <td>First name: </td>
+        <td id="fname"></td>
+    </tr>
+    <tr>
+        <td>Last name: </td>
+        <td id="lname"></td>
+    </tr>
+    <tr>
+        <td>Role: </td>
+        <td id="role"></td>
+    </tr>
+</table>
+
+<h3>Create Defects</h2>
+    <table id="createDefects">
+        <label for="newDefect">please enter new defect</label><br>
+        <input type="text" id="newDefect">
+        <button id = "createNewDefect" onclick="createDefect()">Click to Assign New Defect</button>
+        <br>
+        <label for="testers">please select tester</label><br>
+        <select name="listTesters" id="listTesterId"></select>
+        
+    </table>
+<br>
+<br>
+<h3>Table of Defects</h4>
+<table id="defectsTable" border="1">
+    <thead>
+        <td>Defect Id</td>
+        <td>Defect Name</td>    
+        <td>Tester Name</td>    
+        <td>Status</td>         
+    </thead>
+   
+</table>
+<br>
+<script>
+
+//Get manager info present at top of page    
+async function managerInfo(){
+    //receive username from login page
+    const result = document.getElementById("username");
+    result.textContent = `${localStorage.getItem("username")}`;
+    const testerList = []; //Array to contain all the tester username
+
+  
+    let Config = {
+            method:"GET", // method is a reference to the kind of request you are making (the verb): GET is the default
+            headers:{'Content-Type':"application/json"},
+    }
+    let httpResponse = await fetch('https://bugcatcher.coe.revaturelabs.com/22/employees',Config)
+     
+    //Check for the status of fetch
+    if(httpResponse.status == 200 ){
+        let responseBody = await httpResponse.json(); 
+        console.log(responseBody, result.textContent)
+        for(let key in responseBody){//get manager info and add to body header element
+            if(result.textContent == responseBody[key].username && responseBody[key].role == "Manager"){
+                fname.textContent = responseBody[key].fname;
+                lname.textContent = responseBody[key].lname;
+                role.textContent = responseBody[key].role; 
+            }
+            
+        }
+        
+        //get testers username add to testList
+        for(let key in responseBody){
+            //Only add users with the role of Tester
+            if(responseBody[key].role == "Tester"){
+            testerList.push(responseBody[key].username)
+            }
+        }
+        
+        //add new text area for creating new defect and getting testers option
+        let createTable = document.getElementById("createDefects")
+        let selectList = document.getElementById("listTesterId")
+        for (var i = 0; i < testerList.length; i++) {
+            var option = document.createElement("option");
+            option.value = testerList[i];
+            option.text = testerList[i];
+            selectList.appendChild(option);
+    }
+        createTable.appendChild(selectList)
+    } else {
+        let responseBody = await httpResponse.json(); 
+        alert(responseBody.detail);
+    }
+    
+   
+
+}
+//Get all the defect and show them on the Table of Defect
+async function getDefects(){
+ 
+    let Config = {
+            method:"GET", // method is a reference to the kind of request you are making (the verb): GET is the default
+            headers:{'Content-Type':"application/json"},
+    }
+   let myDefectsJson = await fetch('https://bugcatcher.coe.revaturelabs.com/22/defects',Config)
+   if(myDefectsJson.status == 200 ){
+   let responseBody = await myDefectsJson.json();
+   console.log(responseBody)
+
+    //loop throu the Json and add rows of defects to table
+   for (let key in responseBody){
+      addDefectstoTable(responseBody[key].defectId,responseBody[key].desc,responseBody[key].assignedTo,responseBody[key].status)
+        }
+    }else {
+        alert(responseBody.detail);
+    }
+}
+
+//function to add a new customs row to table
+function addDefectstoTable(dname,desc,assignedTo,dstatus){
+    //add 4 new cells to brand new created row 
+    let tableId = document.getElementById("defectsTable")
+    let newRow = tableId.insertRow();
+    let newCell = newRow.insertCell();
+    let newCell2 = newRow.insertCell();
+    let newCell3 = newRow.insertCell();
+    let newCell4 = newRow.insertCell();
+    let newText = document.createTextNode(dname);
+    let newText2 = document.createTextNode(desc);
+    let newText3 = document.createTextNode(assignedTo);
+    let newText4 = document.createTextNode(dstatus);
+    newCell.appendChild(newText);
+    newCell2.appendChild(newText2);
+    newCell3.appendChild(newText3);
+    newCell4.appendChild(newText4);
+    document.body.appendChild(tableId);
+}
+
+
+async function createDefect(){
+
+    let tList = document.getElementById("listTesterId");
+    let httpResponse = await fetch("https://bugcatcher.coe.revaturelabs.com/22/defects", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        assignedTo: tList.options[tList.selectedIndex].value,
+        dateReported: 0,
+        desc: document.getElementById("newDefect").value,
+        stepsToReproduce: "string",
+        severity: "Low",
+        priority: "Low"
+      }),
+    })
+    if(httpResponse.status === 201){
+          //  alert("successfully created new defect" )    
+            const inputNewDefect = document.getElementById("newDefect");
+            let responseBody = await httpResponse.json();
+            responseBody.defectId = Math.floor(Math.random()*90000) + 10000;
+            responseBody.desc = inputNewDefect.value
+            responseBody.status ="Pending"
+            addDefectstoTable(responseBody.defectId,responseBody.desc,responseBody.assignedTo,responseBody.status);
+            inputNewDefect.value =""
+            
+        }else {
+            let responseBody = await httpResponse.json(); 
+            alert(responseBody.detail);
+    }
+
+}
+
+
+
+managerInfo();
+getDefects();
+
+</script>
+</body>
+</html>

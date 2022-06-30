@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Tester Page</title>
+  
+</head>
+<body>
+    <table>
+        <tr>
+            <td>Username: </td>
+            <td id="username"></td>
+        </tr>
+        <tr>
+            <td>First name: </td>
+            <td id="fname"></td>
+        </tr>
+        <tr>
+            <td>Last name: </td>
+            <td id="lname"></td>
+        </tr>
+        <tr>
+            <td>Role: </td>
+            <td id="role"></td>
+        </tr>
+    </table>
+    
+    <table id="pendingTable" border="1">
+        <tr>
+            <th>Defects ID</th>
+            <th>Defects Names</th>  
+            <th>Acction</th>  
+             
+        </tr>   
+        <br>   
+    </Table>
+
+    <table id="acceptedTable" border="1">
+        <tr>
+            <th>Defects ID</th>
+            <th>Defects Names</th>  
+            <th>Status</th>  
+            <th>Update</th>   
+        </tr>   
+        <br>   
+    </Table>
+    <br>
+
+<script>
+    //Receive username and password value from Login page
+    const result = document.getElementById("username");
+    result.textContent = `${localStorage.getItem("username")}`;
+    
+async function testerInfo(){
+
+    let httpResponse = await fetch('https://bugcatcher.coe.revaturelabs.com/22/employees')
+    if(httpResponse.status == 200 ){
+    let responseBody = await httpResponse.json();    
+    console.log(responseBody)
+    for(let key in responseBody){
+            if(result.textContent == responseBody[key].username && responseBody[key].role == "Tester"){
+                fname.textContent = responseBody[key].fname;
+                lname.textContent = responseBody[key].lname;
+                role.textContent = responseBody[key].role;
+            } 
+        }
+    }else {
+        let responseBody = await httpResponse.json(); 
+        alert(responseBody.detail);}
+} 
+
+    const pendingTable = document.getElementById("pendingTable")
+    const tableAcceptedId = document.getElementById("acceptedTable")
+
+async function manageDefects(username){
+
+    let myDefectsJson = await fetch('https://bugcatcher.coe.revaturelabs.com/22/defects')
+    if(myDefectsJson.status=200){
+        let responseBody = await myDefectsJson.json();
+        let i=1, j =1; //To keep track and assign number id to button
+        for(let key in responseBody){
+            let defectId = document.createTextNode(responseBody[key].defectId);
+            defectId.value=responseBody[key].defectId    
+            let desc = document.createTextNode(responseBody[key].desc);
+            let status = document.createTextNode(responseBody[key].status);
+        if(username == responseBody[key].assignedTo && responseBody[key].status == "Pending"){
+            let newPRow = pendingTable.insertRow()
+            let newPCell = newPRow.insertCell();
+            let newPCell2 = newPRow.insertCell();
+           let newPCell3 = newPRow.insertCell();         
+            let acceptButton = document.createElement("button");
+            acceptButton.textContent = "accept"
+           acceptButton.id = `acceptButton${i}`//add index number after acceptButton
+           acceptButton.onclick = getAcceptDf;
+           let declineButton = document.createElement("button");
+            declineButton.textContent = "decline"
+            declineButton.id = `declineButton${i}`//add index number after declineButton
+            declineButton.onclick = getDeclineDf;        
+            newPCell.appendChild(defectId);
+            newPCell2.appendChild(desc);
+            newPCell3.appendChild(acceptButton);
+           newPCell3.appendChild(declineButton);
+            i++
+        }
+        
+        else if(username == responseBody[key].assignedTo && responseBody[key].status != "Pending" && responseBody[key].status != "Declined"){
+            let newRow = tableAcceptedId.insertRow();
+            let newCell = newRow.insertCell();
+            let newCell2 = newRow.insertCell();
+            let newCell3 = newRow.insertCell();
+            let newCell4 = newRow.insertCell();
+            let rejectButton = document.createElement("button");
+            rejectButton.id = `rejectButton${j}`//add index number after rejectButton
+            rejectButton.textContent = "Reject"
+            rejectButton.onclick = getRejectDf;
+            let fixButton = document.createElement("button");
+                fixButton.id = `fixButton${j}`//add index number after fixButton
+                fixButton.textContent = "Fixed"
+                fixButton.onclick = getFixedDf;
+            let shelveButton = document.createElement("button");
+                shelveButton.id = `shelveButton${j}`//add index number after shelveButton
+                shelveButton.textContent = "Shelved"
+                shelveButton.onclick = getShelvedDf;    
+            newCell.appendChild(defectId);
+            newCell2.appendChild(desc);
+            newCell3.appendChild(status);
+            newCell4.appendChild(rejectButton);
+            newCell4.appendChild(fixButton); 
+            newCell4.appendChild(shelveButton);   
+            document.body.appendChild(tableAcceptedId);
+            j++            
+        } 
+            
+            //function waiting for the buttons to be clicked on and pass the assigneTo number
+            //value to the buttonFuntions to handle
+            function getAcceptDf(){accepted(defectId.value) }
+            function getDeclineDf(){declined(defectId.value)}
+            function getRejectDf(){rejected(defectId.value)}
+            function getFixedDf(){fixed(defectId.value)}
+            function getShelvedDf(){shelved(defectId.value)}
+               
+            }
+        }
+    }
+
+//Function to handling when Accept button is clicked
+ async function accepted(defectId){
+        console.log("acc",defectId)
+        let acceptResponse =  await fetch(`https://bugcatcher.coe.revaturelabs.com/22/defects/${defectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+            assignedTo: defectId,
+            status: 'Accepted',
+        }),
+            headers: {
+                'Content-type': 'application/json',
+        },
+        })
+        if (acceptResponse.status = 204) {
+            alert("Accepted")
+        }else { alert(failed)}
+        document.location.reload() //update new content to page
+    }
+
+    //Function to handling when Decline button is clicked
+async function declined(defectId){
+        
+            console.log("dec",defectId)
+        let  declineResponse =   await fetch(`https://bugcatcher.coe.revaturelabs.com/22/defects/${defectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+            assignedTo: defectId,
+            status: 'Declined',
+        }),
+            headers: {
+                'Content-type': 'application/json',
+        },
+    })
+    if (declineResponse.status = 204) {
+            alert("Declined")
+        }else { alert(failed)}
+    document.location.reload()
+    }
+
+  //Function to handling when Reject button is clicked
+    async function rejected(defectId){
+            console.log("rej",defectId)
+    let rejectResponse =   await fetch(`https://bugcatcher.coe.revaturelabs.com/22/defects/${defectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+            assignedTo: defectId,
+            status: 'Rejected',
+        }),
+            headers: {
+                'Content-type': 'application/json',
+        },
+    })
+    if (rejectResponse.status = 204) {
+            alert("Rejected")
+        }else { alert(failed)}
+    document.location.reload()
+    }
+
+   //Function to handling when Fix button is clicked
+    async function fixed(defectId){
+            console.log("fix",defectId)
+            let fixedResponse =  await fetch(`https://bugcatcher.coe.revaturelabs.com/22/defects/${defectId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+            assignedTo: defectId,
+            status: 'Fixed',
+        }),
+            headers: {
+                'Content-type': 'application/json',
+        },
+    })
+    if (fixedResponse.status = 204) {
+            alert("Fixed")
+        }else { alert(failed)}
+    document.location.reload()
+    }
+
+  //Function to handling when Shelve button is clicked
+    async function shelved(defectId){
+        console.log("she",defectId)
+        let shelvedResponse =   await fetch(`https://bugcatcher.coe.revaturelabs.com/22/defects/${defectId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                assignedTo: defectId,
+                status: 'Shelved',
+            }),
+                headers: {
+                'Content-type': 'application/json',
+        },
+        }) 
+        if (shelvedResponse.status = 204) {
+            alert("Shelved")
+        }else { alert(failed)}
+        document.location.reload()
+    }
+
+
+    manageDefects(username.textContent);
+    testerInfo();
+</script>
+
+</body>
+</html>
